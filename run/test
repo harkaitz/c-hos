@@ -1,0 +1,5 @@
+#!/bin/sh -e
+#help: Execute "hos.iso" with qemu.
+test -e hos.iso || make hos.iso
+qemu-system-i386 -display sdl -M pc -k es -cdrom hos.iso
+

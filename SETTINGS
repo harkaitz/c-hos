@@ -1,0 +1,17 @@
+PROGRAMS='Shell TopBar Banner'
+MODULES='Screen Keyboard'
+
+kernel_config() {
+    local m
+    echo "#include \"kernel.h\""
+    echo ""
+    for m in ${MODULES} ${PROGRAMS}; do
+        echo "extern hos_Module hos_${m}_Module;"
+    done
+    echo ""
+    echo "static inline void hos_Kernel_Register(void) {"
+    for m in ${MODULES} ${PROGRAMS}; do
+        echo "    hos_Module_register(&hos_${m}_Module);"
+    done
+    echo "}"
+}

@@ -1,0 +1,71 @@
+#!/bin/sh -e
+##:
+#h: Usage: grub-h-mkiso [-n NAME] [-o ISO] BIN
+#h:
+#h: Create bootable iso file with a kernel and print the
+#h: created file's path.
+##:
+grub_h_mkiso() {
+    local OPTIND optopt tmp name= iso= bin=
+    
+    ## Parse command line arguments.
+    while getopts "n:o:" optopt; do
+        case $optopt in
+            n)  name="${OPTARG}";;
+            o)  iso="${OPTARG}";;
+            \?) return 1;;
+        esac
+    done
+    shift $(( $OPTIND - 1 ))
+    bin="$1"
+    if test ! -n "${bin}"; then
+        echo >&2 "error: Please specify a binary file."
+        return 1
+    elif test ! -f "${bin}"; then
+        echo >&2 "error: ${bin}: The file does not exist."
+        return 1
+    fi
+
+    ## Check programs.
+    if ! which grub-mkrescue >/dev/null 2>&1; then
+        echo >&2 "error: grub-mkrescue: Command not found, install 'grub-common'."
+        return 1
+    elif ! which xorriso >/dev/null 2>&1; then
+        echo >&2 "error: xorriso: Command not found, install 'xorriso'."
+        return 1
+    elif ! which mformat >/dev/null 2>&1; then
+        echo >&2 "error: mformat: Command not found, install 'mtools'."
+        return 1
+    elif test ! -f /usr/lib/grub/i386-pc/boot.img; then
+        echo >&2 "error: Grub without PC support, install 'grub-pc-bin'"
+        return 1
+    fi
+    
+    ## Create temporary directory.
+    tmp="$(mktemp -d)" base="$(basename ${bin})"
+    mkdir -p "${tmp}"/boot/grub
+    cp "${bin}" "${tmp}"/boot
+    cat > "${tmp}"/boot/grub/grub.cfg <<-EOF
+	set timeout=0
+	set default=0
+	
+	menuentry "${name:-${base}}" {
+	    multiboot /boot/${base}
+	    boot
+	}
+	EOF
+    
+    ## Create iso.
+    iso="${iso:-${TEMP:-/tmp}/grub-h-mkiso-$(whoami).iso}"
+        
+    grub-mkrescue --output="${iso}" "${tmp}" >&2
+    
+    rm -rf "${tmp}"
+    echo "${iso}"
+}
+if test @"$(basename "$0")" = @"grub-h-mkiso";then
+    case "${1}" in
+        ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0" ;;
+        *)            grub_h_mkiso "$@"; exit 0         ;;
+    esac
+fi
